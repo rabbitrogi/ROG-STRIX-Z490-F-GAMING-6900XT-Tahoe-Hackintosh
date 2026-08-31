@@ -12,7 +12,7 @@
 |---|---|
 | Goal / 目标 | macOS Tahoe 26.6.2 on P3600 800GB NVMe, Sequoia system on PM1735 untouched / Sequoia 系统盘全程不动 |
 | Outcome / 结果 | ✅ Success / 成功 |
-| Effort / 工作量 | 5 days, 30+ boot attempts, 11 distinct root causes / 五天，30+ 次启动尝试，11 个独立根因 |
+| Effort / 工作量 | 5 days, 30+ boot attempts, 12 distinct root causes / 五天，30+ 次启动尝试，12 个独立根因 |
 | Ending config / 最终配置 | Dual-config architecture (see README) / 双 config 架构 |
 
 ## Timeline Overview / 时间线总览
@@ -127,6 +127,20 @@
 **Root cause / 根因**: **Tahoe's install payload is AEA-encrypted; personalization must contact Apple's servers (albert.apple.com) to obtain per-machine decryption keys.** The installer environment had NO ethernet driver → infinite wait. (Earlier USB-era runs reached 20% because that was GUI phase-1 local copying — personalize never ran.) / 载荷是 AEA 加密的，个性化必须联网；安装环境没有网卡驱动就死等。
 
 **Fix / 解法**: Enable AppleIntelI210Ethernet.kext + `e1000=0` (I225-V additionally needs device-id spoof 15F3→15F2 — all three required, the user's own empirical finding). Verify connectivity first: `curl https://albert.apple.com` from the working system before rebooting. Plug the cable. → **SUCCESS**. / 启用网卡 + 伪装 + 参数，验证出网后重启——成功。
+
+---
+
+## Pit 12: WiFi Double-Load After Root Patching / root patch 后的 WiFi 双载冲突
+
+**Symptom / 症状**: After applying OCLP-Mod root patches (WiFi works!), boots become a lottery — sometimes freezing at the verbose text stage, sometimes at graphics init (Caps Lock dead), sometimes booting fine. No pattern. / 打完 root patch 后（WiFi 正常了），启动变成抽签——有时死在滚字符阶段，有时死在图形界面阶段（Caps Lock 无反应），有时正常。无规律。
+
+**Forensics / 取证**: All 5 OC logs from the mixed good/bad boots are byte-identical through EXITBS — the freezes are purely kernel-side. The randomness across freeze *locations* points to a load-order race, not a deterministic offset mismatch. / 五次混合成败的 OC 日志在 EXITBS 之前逐字节一致——冻结全在内核侧。冻结位置随机漂移指向加载顺序竞态，而非确定的偏移错配。
+
+**Root cause / 根因**: The daily config still injected the WiFi stack (IOSkywalkFamily + IO80211FamilyLegacy + AirPortBrcmNIC) AND blocked `com.apple.iokit.IOSkywalkFamily` — while the root patch had installed the same kexts system-side. Two copies of the same drivers competing per boot; the bundle-ID block also killed the root-patched system version. Whichever copy won the race determined whether the boot survived. / 日常 config 还在注入 WiFi 三件套并屏蔽原生 IOSkywalkFamily——而 root patch 已把同一套装进了系统。双份竞争 + 屏蔽误杀 root patch 版本，谁赢谁定生死。
+
+**Fix / 解法**: Disable all EFI-injected WiFi entries + the IOSkywalkFamily block in the daily config. Root patches own the WiFi stack from now on. (This repo's daily config ships pre-fixed.) / 禁用日常 config 里全部 WiFi 注入条目和 IOSkywalk 屏蔽，WiFi 交给 root patch。
+
+**Lesson / 教训**: **Root patches and EFI kext injection are mutually exclusive — pick one per subsystem.** This is documented OCLP guidance that's easy to miss when a config was built before patching. / **root patch 和 EFI 注入互斥——每个子系统二选一。**这是 OCLP 文档里容易漏看的准则。
 
 ---
 

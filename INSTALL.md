@@ -110,6 +110,12 @@ Reboot → GPU acceleration, onboard audio, ethernet, Bluetooth, full USB should
 
 ## Step 6: WiFi Root Patch (OCLP-Plus) / 第 6 步：WiFi root patch
 
+> ⚠️ **CRITICAL — Root patches and EFI kext injection are mutually exclusive / root patch 与 EFI 注入互斥**
+> After applying root patches, the EFI must NOT inject the WiFi stack (IOSkywalkFamily / IO80211FamilyLegacy / AirPortBrcmNIC) and must NOT block the native IOSkywalkFamily. Double-loading both versions causes **random boot freezes** (sometimes at verbose text, sometimes at graphics init, Caps Lock dead). The daily config in this repo already ships with WiFi injection disabled for this reason.
+> / 打完 root patch 后，EFI 绝不能再注入同一套 WiFi kext 或屏蔽原生 IOSkywalkFamily——双份竞争加载会导致随机启动冻结。本仓库的日常 config 已预先禁用注入。
+>
+> Note: stock OCLP refuses to patch Tahoe 26.6.2 ("unrecognized version") — use OCLP-Mod or OCLP-Plus. After patching, the first boot may fail once; the second should succeed. / 原版 OCLP 拒绝给 26.6.2 打补丁（不认识版本号）——用 OCLP-Mod 或 OCLP-Plus。打完补丁第一次启动可能失败，第二次正常。
+
 1. Download [OCLP-Plus 3.2.2](https://github.com/YBronst/OCLP-Plus/releases/download/3.2.2/OCLP-Plus.pkg) (repo archived but 3.2.2 works; alternative: [OCLP-Mod](https://github.com/laobamac/OCLP-Mod/releases));
 2. Install the pkg → open OCLP-Plus → **Post-Install Root Patch** → check only **WiFi (Modern Wireless)** → Apply → reboot;
 3. Prerequisites are already baked into the daily config (SIP `0x0803`, SecureBootModel Disabled, AMFIPass + `-amfipassbeta`, `revpatch=sbvmm`). / 前置条件已在日常 config 里备好。
