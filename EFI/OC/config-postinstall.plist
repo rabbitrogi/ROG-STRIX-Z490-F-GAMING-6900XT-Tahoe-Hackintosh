@@ -248,6 +248,21 @@
 				8hUAAA==
 				</data>
 			</dict>
+			<key>PciRoot(0x0)/Pci(0x1C,0x7)/Pci(0x0,0x0)</key>
+			<dict>
+				<key>bcmc-default-country-code</key>
+				<string>CN</string>
+				<key>bcmc-firmware-hash</key>
+				<data>
+				v0z8I+6VKj2C7zOg9fh4UyAcmPG+0DSHapEPNU83hi0=
+				</data>
+				<key>bcmc-firmware-path</key>
+				<string>/usr/local/share/firmware/wifi/brcmfmac43602-pcie_7.35.177.61.bin</string>
+				<key>bcmc-srom-slide</key>
+				<data>
+				AAAAAA==
+				</data>
+			</dict>
 			<key>PciRoot(0x0)/Pci(0x1F,0x3)</key>
 			<dict>
 				<key>layout-id</key>
@@ -285,6 +300,24 @@
 				<string></string>
 				<key>MinKernel</key>
 				<string>12.0.0</string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>AppleBCMWLANCompanion.kext</string>
+				<key>Comment</key>
+				<string>V1.1.0 | Native Broadcom WiFi via AppleBCMWLAN driver</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/AppleBCMWLANCompanion</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string></string>
 				<key>PlistPath</key>
 				<string>Contents/Info.plist</string>
 			</dict>
@@ -350,7 +383,7 @@
 				<key>Comment</key>
 				<string>V1.7.0</string>
 				<key>Enabled</key>
-				<true/>
+				<false/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/WhateverGreen</string>
 				<key>MaxKernel</key>
@@ -456,7 +489,7 @@
 				<key>BundlePath</key>
 				<string>IOSkywalkFamily.kext</string>
 				<key>Comment</key>
-				<string>V1.0 [disabled: root patch supersedes (see INSTALL.md step 6)]</string>
+				<string>V1.0</string>
 				<key>Enabled</key>
 				<false/>
 				<key>ExecutablePath</key>
@@ -474,7 +507,7 @@
 				<key>BundlePath</key>
 				<string>IO80211FamilyLegacy.kext</string>
 				<key>Comment</key>
-				<string>V1200.12.2b1 [disabled: root patch supersedes (see INSTALL.md step 6)]</string>
+				<string>V1200.12.2b1</string>
 				<key>Enabled</key>
 				<false/>
 				<key>ExecutablePath</key>
@@ -492,7 +525,7 @@
 				<key>BundlePath</key>
 				<string>IO80211FamilyLegacy.kext/Contents/PlugIns/AirPortBrcmNIC.kext</string>
 				<key>Comment</key>
-				<string>V1400.1.1 [disabled: root patch supersedes (see INSTALL.md step 6)]</string>
+				<string>V1400.1.1</string>
 				<key>Enabled</key>
 				<false/>
 				<key>ExecutablePath</key>
@@ -512,7 +545,7 @@
 				<key>Comment</key>
 				<string>V1.4.1</string>
 				<key>Enabled</key>
-				<true/>
+				<false/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/AMFIPass</string>
 				<key>MaxKernel</key>
@@ -901,7 +934,7 @@
 			<key>CustomSMBIOSGuid</key>
 			<false/>
 			<key>DisableIoMapper</key>
-			<true/>
+			<false/>
 			<key>DisableIoMapperMapping</key>
 			<false/>
 			<key>DisableLinkeditJettison</key>
@@ -1189,10 +1222,10 @@
 				Rg==
 				</data>
 				<key>boot-args</key>
-				<string>-v agdpmod=pikera keepsyms=1 debug=0x100 alcid=1 e1000=0 ipc_control_port_options=0 -amfipassbeta revpatch=sbvmm</string>
+				<string>-v agdpmod=pikera keepsyms=1 debug=0x100 alcid=1 e1000=0 ipc_control_port_options=0 revpatch=sbvmm wlan.pcie.detectsabotage=0</string>
 				<key>csr-active-config</key>
 				<data>
-				AwgAAA==
+				AAAAAA==
 				</data>
 				<key>prev-lang:kbd</key>
 				<data>

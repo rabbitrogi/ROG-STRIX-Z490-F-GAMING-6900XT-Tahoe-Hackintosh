@@ -12,7 +12,7 @@
 |---|---|
 | Goal / 目标 | macOS Tahoe 26.6.2 on P3600 800GB NVMe, Sequoia system on PM1735 untouched / Sequoia 系统盘全程不动 |
 | Outcome / 结果 | ✅ Success / 成功 |
-| Effort / 工作量 | 5 days, 30+ boot attempts, 12 distinct root causes / 五天，30+ 次启动尝试，12 个独立根因 |
+| Effort / 工作量 | 5 days, 30+ boot attempts, 13 distinct root causes / 五天，30+ 次启动尝试，13 个独立根因 |
 | Ending config / 最终配置 | Dual-config architecture (see README) / 双 config 架构 |
 
 ## Timeline Overview / 时间线总览
@@ -141,6 +141,20 @@
 **Fix / 解法**: Disable all EFI-injected WiFi entries + the IOSkywalkFamily block in the daily config. Root patches own the WiFi stack from now on. (This repo's daily config ships pre-fixed.) / 禁用日常 config 里全部 WiFi 注入条目和 IOSkywalk 屏蔽，WiFi 交给 root patch。
 
 **Lesson / 教训**: **Root patches and EFI kext injection are mutually exclusive — pick one per subsystem.** This is documented OCLP guidance that's easy to miss when a config was built before patching. / **root patch 和 EFI 注入互斥——每个子系统二选一。**这是 OCLP 文档里容易漏看的准则。
+
+---
+
+## Pit 13: AMFIPass Lottery on Tahoe 26.6.2 / AMFIPass 抽签机（最终大案）
+
+**Symptom / 症状**: Random boot failures with no pattern — sometimes freezing at verbose text, sometimes at graphics init (black screen, Caps Lock dead), sometimes booting fine. / 随机启动失败无规律——有时死在滚字符，有时死在图形初始化，有时正常。
+
+**Forensics / 取证**: A failed boot's verbose screenshot showed the hang at launchd's `[Event: EndpointSecurity] Doing boot task` — the EndpointSecurity subsystem depends on AMFI being in a consistent state. With AMFIPass **disabled**, the boot died deterministically with `AMFI: code signature validation failed` on every OCLP-patched WiFi framework dylib (IO80211Old.dylib, WiFiPeerToPeer, LibSystemShim). / 失败启动的 verbose 截图显示挂在 launchd 的 EndpointSecurity 启动任务（依赖 AMFI 状态一致）；关闭 AMFIPass 后则确定性地死在 root patch 框架的签名校验上。
+
+**Root cause / 根因**: **AMFIPass 1.4.1 (2024, final release, upstream repo deleted) does not know Tahoe 26.6.2's AMFI layout.** The `-amfipassbeta` flag forces it to patch with stale offsets; KASLR randomizes addresses every boot, so a wrong-offset patch lands on different live code each time — sometimes harmless (boots), sometimes fatal (freeze). On Sequoia, AMFIPass's built-in offsets matched exactly (no beta flag needed) — which is why the same config was perfectly stable there. / **AMFIPass 1.4.1 不认识 26.6.2 的 AMFI 布局**，`-amfipassbeta` 强迫它用过期偏移硬打；KASLR 每次随机化地址，打错的补丁落在不同活代码上——抽签。Sequoia 上偏移精确匹配（无需 beta 参数），所以同样的组合在那边稳如泰山。
+
+**Fix / 解法**: Revert the OCLP root patches entirely (OCLP-Mod → Revert Root Patches), remove AMFIPass + `-amfipassbeta`, and switch WiFi to **[AppleBCMWLANCompanion (BCMC)](https://github.com/0xFireWolf/AppleBCMWLANCompanion)** — a Lilu plugin + chip configurator that makes Apple's *native* Tahoe Broadcom driver accept the legacy BCM43602/BCM4350 chips. No root patches, no AMFI bypass, no SIP lowering. / 彻底回滚 OCLP root patch、移除 AMFIPass，WiFi 改用 BCMC（让 Apple 原生 Tahoe 驱动认老卡），无 root patch、无 AMFI 绕过、无需降 SIP。
+
+**Lesson / 教训**: **When a root patch's enabler (AMFIPass) is frozen upstream and the OS has moved past it, the whole root-patch approach is dead — find the native-driver path instead.** Also: a component that "works" on one macOS version because it was built for it will become a per-boot lottery on any newer version it doesn't recognize. / **root patch 的使能器（AMFIPass）上游冻结而 OS 已走远时，整条 root patch 路线即死——去找原生驱动路线。** 另外：一个组件"能用"只是因为它是为当前版本写的；版本一更新它就变成每次启动的抽签。
 
 ---
 

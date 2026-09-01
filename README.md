@@ -15,7 +15,7 @@
 | GPU / 显卡 | AMD Radeon RX 6900 XT 16GB (Navi 21, `0x73BF`) | ✅ Native / 原生支持 (MacPro7,1 ships W6900X — same silicon) |
 | RAM / 内存 | 64GB DDR4 3600 | ✅ |
 | Ethernet / 有线网卡 | Intel I225-V (onboard) | ✅ Injected AppleIntelI210Ethernet 2.3.1 + device-id spoof `15F3→15F2` + boot-arg `e1000=0` |
-| WiFi / BT / 无线蓝牙 | Broadcom BCM94360 family (upgraded) | ⚠️ Needs OCLP-Plus root patch |
+| WiFi / BT / 无线蓝牙 | Broadcom BCM94360 family (upgraded) | ✅ AppleBCMWLANCompanion (native driver, no root patch / 原生驱动，无需 root patch) |
 | Display / 显示器 | 6K (6144×3456) | ✅ |
 | Storage / 存储 | PM1735 6.4TB (Sequoia) + Intel DC P3600 800GB U.2/PCIe (Tahoe target) | ✅ |
 
@@ -29,7 +29,7 @@
 | Audio / 音频 | ✅ | AppleALC 1.9.7, layout-id 1 |
 | USB | ✅ | Custom USBMap, Tahoe dual-format keys |
 | Sensors / 传感器 | ✅ | VirtualSMC suite + SMCRadeonSensors |
-| WiFi / BT | 🔧 Root patch | OCLP-Plus 3.2.2 Post-Install Root Patch |
+| WiFi / BT | ✅ BCMC native | AppleBCMWLANCompanion 1.1.0 — no root patch, no AMFIPass, SIP fully on / 原生驱动路线，无需 root patch、无需 AMFIPass、SIP 全开 |
 | Sleep / 睡眠 | ❓ Untested / 未测试 | |
 
 ## Repository Layout / 仓库内容
@@ -106,6 +106,7 @@ So: install with the minimal config (5 kexts), swap to the full config (15 kexts
 | AMFIPass | 1.4.1 | Final release (upstream repo deleted) / 绝版 |
 | IO80211FamilyLegacy + AirPortBrcmNIC + IOSkywalkFamily | OCLP payload originals | WiFi injection stack / WiFi 注入栈 |
 | USBMap | Custom / 定制 | Dual-format keys (Sequoia + Tahoe) / 双格式键名 |
+| AppleBCMWLANCompanion | 1.1.0 | Native-driver WiFi for legacy Broadcom — replaces the whole OCLP root-patch path / 老 Broadcom 卡的原生驱动方案，取代 OCLP root patch 路线 |
 
 ## BIOS Settings / BIOS 设置
 
@@ -122,7 +123,8 @@ Mostly defaults; verify these / 基本默认即可，确认以下几项：
 
 - [Acidanthera](https://github.com/acidanthera) — OpenCore, Lilu, WhateverGreen, AppleALC, VirtualSMC, RestrictEvents, NVMeFix, BrcmPatchRAM
 - [Dortania](https://dortania.github.io/) — OpenCore guides & Tahoe notes
-- [OCLP-Plus (YBronst)](https://github.com/YBronst/OCLP-Plus) — Tahoe WiFi root patch (archived; 3.2.2 still works)
+- [0xFireWolf/AppleBCMWLANCompanion](https://github.com/0xFireWolf/AppleBCMWLANCompanion) — the native-driver WiFi solution this build uses / 本构建采用的 WiFi 方案
+- [OCLP-Plus (YBronst)](https://github.com/YBronst/OCLP-Plus) / [OCLP-Mod (laobamac)](https://github.com/laobamac/OCLP-Mod) — Tahoe root patchers (evaluated, not used — see INSTALL-LOG.md pit 13 / 评估后未采用——见实录坑13)
 - [laobamac/OCLP-Mod](https://github.com/laobamac/OCLP-Mod) — alternative root patcher / 备选
 - [ChefKissInc/SMCRadeonSensors](https://github.com/ChefKissInc/SMCRadeonSensors) — AMD GPU sensors
 - [corpnewt](https://github.com/corpnewt) — USBMap, GenSMBIOS

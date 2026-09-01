@@ -108,17 +108,39 @@ sudo cp /Volumes/EFI/EFI/OC/config-postinstall.plist /Volumes/EFI/EFI/OC/config.
 
 Reboot → GPU acceleration, onboard audio, ethernet, Bluetooth, full USB should all be live. / 重启后显卡加速、声卡、有线网卡、蓝牙、USB 全速恢复。
 
-## Step 6: WiFi Root Patch (OCLP-Plus) / 第 6 步：WiFi root patch
+## Step 6: WiFi via BCMC (native driver, no root patch) / 第 6 步：WiFi 用 BCMC 原生驱动方案
 
-> ⚠️ **CRITICAL — Root patches and EFI kext injection are mutually exclusive / root patch 与 EFI 注入互斥**
-> After applying root patches, the EFI must NOT inject the WiFi stack (IOSkywalkFamily / IO80211FamilyLegacy / AirPortBrcmNIC) and must NOT block the native IOSkywalkFamily. Double-loading both versions causes **random boot freezes** (sometimes at verbose text, sometimes at graphics init, Caps Lock dead). The daily config in this repo already ships with WiFi injection disabled for this reason.
-> / 打完 root patch 后，EFI 绝不能再注入同一套 WiFi kext 或屏蔽原生 IOSkywalkFamily——双份竞争加载会导致随机启动冻结。本仓库的日常 config 已预先禁用注入。
->
-> Note: stock OCLP refuses to patch Tahoe 26.6.2 ("unrecognized version") — use OCLP-Mod or OCLP-Plus. After patching, the first boot may fail once; the second should succeed. / 原版 OCLP 拒绝给 26.6.2 打补丁（不认识版本号）——用 OCLP-Mod 或 OCLP-Plus。打完补丁第一次启动可能失败，第二次正常。
+The daily config already ships with **AppleBCMWLANCompanion** enabled — it makes Apple's *native* Tahoe Broadcom driver accept your legacy BCM94360-family card. No root patches, no AMFIPass, SIP stays fully on. / 日常 config 已内置 **AppleBCMWLANCompanion**——让 Apple 在 Tahoe 里的原生 Broadcom 驱动认你的老卡。不打 root patch、不需要 AMFIPass、SIP 全开。
 
-1. Download [OCLP-Plus 3.2.2](https://github.com/YBronst/OCLP-Plus/releases/download/3.2.2/OCLP-Plus.pkg) (repo archived but 3.2.2 works; alternative: [OCLP-Mod](https://github.com/laobamac/OCLP-Mod/releases));
-2. Install the pkg → open OCLP-Plus → **Post-Install Root Patch** → check only **WiFi (Modern Wireless)** → Apply → reboot;
-3. Prerequisites are already baked into the daily config (SIP `0x0803`, SecureBootModel Disabled, AMFIPass + `-amfipassbeta`, `revpatch=sbvmm`). / 前置条件已在日常 config 里备好。
+What's left to do / 还需要做的：
+
+1. Download the firmware for your chip / 下载对应固件:
+   - BCM43602 (`14e4:43ba`): [`brcmfmac43602-pcie_7.35.177.61.bin`](https://github.com/0xFireWolf/AppleBCMWLANCompanion/raw/main/Firmwares/BCM43602/brcmfmac43602-pcie_7.35.177.61.bin) — sha256 `bf4cfc23ee952a3d82ef33a0f5f87853201c98f1bed034876a910f354f37862d`
+   - BCM4350 (`14e4:43a3`): see the [BCMC repo Firmwares dir](https://github.com/0xFireWolf/AppleBCMWLANCompanion/tree/main/Firmwares)
+2. Install it / 安装固件:
+   ```bash
+   sudo mkdir -p /usr/local/share/firmware/wifi/
+   sudo cp brcmfmac43602-pcie_7.35.177.61.bin /usr/local/share/firmware/wifi/
+   shasum -a 256 /usr/local/share/firmware/wifi/brcmfmac43602-pcie_7.35.177.61.bin  # must match the hash above / 必须匹配上面的哈希
+   ```
+3. Verify the config's DeviceProperties point at YOUR WiFi card's PCI path / 确认 config 里的 DeviceProperties 指向你的网卡 PCI 路径:
+   - This repo targets `PciRoot(0x0)/Pci(0x1C,0x7)/Pci(0x0,0x0)` (RP08 slot on this board). On the same board it's correct; verify with Hackintool if unsure. / 本仓库指向 RP08 槽；同板即正确，不确定就用 Hackintool 核对。
+4. Reboot → WiFi should come up natively. Verify / 重启后验证:
+   ```bash
+   kextstat | grep bcmc   # expect science.firewolf.bcmc
+   sudo dmesg | grep bcmc # chip bring-up log
+   ```
+
+### Optional: full-speed WiFi (VT-d) / 可选：满速 WiFi（开 VT-d）
+
+The shipped config uses the IOMapper path. For full speed (~500/250 Mbps vs ~130/130): enable **VT-d** in BIOS (Advanced → System Agent/CPU Configuration). The config already has `DisableIoMapper=false`, so it just works. If AppleVTD turns out broken on your board (symptom: WiFi driver won't load — system still boots fine), re-add device property `bcmc-disable-io-mapper` = `01000000` and disable VT-d again. / 出厂 config 走 IOMapper 路径。要满速就在 BIOS 开 VT-d（config 已配好）。若 AppleVTD 在你板子上不工作（症状：WiFi 驱动不加载，系统照常启动），加回 `bcmc-disable-io-mapper` 并关 VT-d 即可。
+
+### Known BCMC limitations (Beta) / BCMC 已知限制（Beta 阶段）
+
+- **No AWDL → no AirDrop/Continuity** (firmware doesn't support it). Use LocalSend as an alternative. / **无 AWDL → AirDrop/Continuity 不可用**（固件不支持）。可用 LocalSend 替代。
+- Sleep/wake may panic (Beta). / 睡眠唤醒可能 panic（Beta 阶段）。
+- Disable BCMC before OTA updates (`-bcmcoff` boot-arg), re-enable after. / OTA 更新前加 `-bcmcoff` 禁用，更新完再启用。
+- Wrong Tx rate shown in WiFi menu (24 Mbps display bug). / WiFi 菜单显示速率不准（24 Mbps 显示 bug）。
 
 ## Step 7: Verification Checklist / 第 7 步：验证清单
 
