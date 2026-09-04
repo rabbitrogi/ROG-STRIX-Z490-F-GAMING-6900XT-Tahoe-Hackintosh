@@ -6,6 +6,22 @@
 
 ---
 
+## 🚀 TL;DR — 太长不看版（照抄就能跑）
+
+> **我们的尝试与努力，是为了后来的人能够节省尝试的时间。** All 16 pits we hit are already solved in the configs below — you don't need to read them, just follow 5 steps. / 下面两个 config 已把 16 个坑全部规避，跟着做即可。
+
+**前提 / Prereqs**: 本配置 = 这台硬件（见下表）+ **BCM94360 系列卡（苹果固件版，蓝牙 `Vendor ID 0x004C`）**。换卡不保证。
+
+1. **先改序列号** — 两个 plist 都要改（`PlatformInfo → Generic`）：用 [GenSMBIOS](https://github.com/corpnewt/GenSMBIOS) 选 `MacPro7,1` 生成，填入 `SystemSerialNumber` / `SystemUUID` / `MLB`。ROM 随便一个 6 字节 MAC。
+2. **装系统** — EFI 里放 `config.plist`（安装版，5 kext），一路装完。USB 不稳就插主板后置 USB 2.0 口。
+3. **装完换 config** — `config-postinstall.plist` 覆盖 `config.plist`，重启。此时能进系统但 WiFi 还不通——正常，还差最后一步。
+4. **打 WiFi 补丁** — 下载 [OCLP-Mod](https://github.com/laobamac/OCLP-Mod)，运行 → Post-Install Root Patch → 重启。
+5. **完成** — WiFi / AirDrop 双向 / DRM（Netflix）/ 蓝牙（AirPods）全部可用，双系统切换**无需清 NVRAM**。
+
+就这 5 步。装完想看门道或遇到问题，再去读 [INSTALL.md](INSTALL.md) 和 [INSTALL-LOG.md](INSTALL-LOG.md)（16 坑全记录）。
+
+---
+
 ## Hardware / 硬件配置
 
 | Component / 部件 | Model / 型号 | Compatibility / 兼容性 |
