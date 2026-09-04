@@ -368,7 +368,7 @@
 				<key>Comment</key>
 				<string>V1.9.7</string>
 				<key>Enabled</key>
-				<true/>
+				<false/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/AppleALC</string>
 				<key>MaxKernel</key>
@@ -422,7 +422,7 @@
 				<key>Comment</key>
 				<string>V2.7.2</string>
 				<key>Enabled</key>
-				<true/>
+				<false/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/BlueToolFixup</string>
 				<key>MaxKernel</key>
@@ -566,7 +566,7 @@
 				<key>Comment</key>
 				<string>Added by Wi-Fi Patcher Pro</string>
 				<key>Enabled</key>
-				<true/>
+				<false/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/BlueWakeFixup</string>
 				<key>MaxKernel</key>
@@ -1207,7 +1207,7 @@
 				Rg==
 				</data>
 				<key>boot-args</key>
-				<string>-v keepsyms=1 debug=0x100 revpatch=sbvmm e1000=0 amfi=0x80 amfi_get_out_of_my_way=0x1 cs_enforcement_disable=1 -amfipassbeta agdpmod=pikera alcid=1 ipc_control_port_options=0</string>
+				<string>-v keepsyms=1 debug=0x100 e1000=0 -amfipassbeta agdpmod=pikera ipc_control_port_options=0</string>
 				<key>csr-active-config</key>
 				<data>
 				//8AAA==

@@ -183,6 +183,36 @@
 
 ---
 
+## Pit 15: The amfi Trio Kills DRM / amfi 三件套杀死 DRM
+
+**Symptom / 症状**: Netflix in Chrome fails with "Chrome may not have protected content playback enabled"; AirDrop/WiFi fine. / Chrome 放 Netflix 报"未启用受保护内容播放"；WiFi/AirDrop 正常。
+
+**Root cause / 根因**: The boot-args `amfi=0x80 amfi_get_out_of_my_way=0x1 cs_enforcement_disable=1` (carried from the debugging era as belt-and-suspenders next to AMFIPass) disable AMFI's code-signing enforcement entirely — and DRM stacks (Widevine in Chrome, FairPlay in Safari) refuse to run in that environment. This is precisely why AMFIPass exists: it patches only the library-validation path so root-patched frameworks load while AMFI's enforcement (which DRM needs) stays alive. Running BOTH means the trio silently voids AMFIPass's whole point. / 三件套把 AMFI 整个关掉，而 DRM（Widevine/FairPlay）拒绝在无签名校验环境运行。AMFIPass 的设计目标就是"只开框架校验的口子、保住其余 AMFI 功能"——和三件套并用等于白装。
+
+**Fix / 解法**: Remove the three amfi args; keep `AMFIPass.kext` + `-amfipassbeta` + SIP `0xFFFF`. Under SIP-off, the patched frameworks pass even when AMFIPass loses its race — the pit-13 lottery stays dead AND Netflix plays. Bonus: removing them also restored AirPods audio routing visibility in DRM playback. / 删三件套、保 AMFIPass + SIP 全关。抽签机依然死、Netflix 能放。
+
+**Lesson / 教训**: **AMFIPass and the amfi boot-args are alternatives, not layers.** If you need root patches to load, AMFIPass-only preserves DRM/Apple-ID/iCloud; the blunt boot-args preserve nothing. Community wisdom already said "incompatible" — the mechanism is that the trio destroys what AMFIPass is carefully keeping alive. / **二者是替代关系不是叠加关系。** 要 DRM 就只能 AMFIPass 单飞。
+
+---
+
+## Pit 16: `revpatch=sbvmm` Silently Disables AirDrop Receiving / VMM 伪装静默关闭 AirDrop 接收
+
+**Symptom / 症状**: AirDrop send (Mac→iPhone) works, but the iPhone never lists the Mac in its share sheet. Universal Clipboard (copy on iPhone → paste on Mac) works, Bluetooth works, same machine's Sequoia install IS visible. / 发送正常、手机分享列表里就是没有这台 Mac；通用剪贴板正常；同机 Sequoia 能被发现。
+
+**Forensics / 取证**（three rounds, narrowing each time / 三轮逐步收窄）:
+1. bluetoothd logs decode the Apple Continuity manufacturer data as TLVs. The working Sequoia advertises types `9 16 22`; the broken Tahoe advertises `5 9 15 16 18` — same machinery (`status=0` everywhere), **different service set**. AirDrop's presence is one gated decision, not a radio problem.
+2. sharingd's boot log shows the gate: `AirDrop not ready: wifi=?, bluetooth=?, carplay=?, receivingEnabled=?, isVirtualMachine=?, isMulticastAdvertisementsDisabled=?` (values privacy-redacted) — six suspects, one of which is `isVirtualMachine`.
+3. Differential on the same machine: Sequoia's boot-args vs Tahoe's boot-args differ in exactly one meaningful token — **`revpatch=sbvmm` (present only on Tahoe)**. That's RestrictEvents' VMM spoof, needed during *install* to pass update checks — and macOS disables AirDrop on virtual machines.
+
+**Fix / 解法**: Delete `revpatch=sbvmm` from the **daily** config's boot-args (the install config keeps it). Reboot → iPhone lists the Mac immediately; photo received over `fe80::…%awdl0`. Note: `kern.hv_support` stays `1` on this OCLP-patched system either way — the gate reads the spoofed platform identity, not that sysctl. / 从日常 config 删掉 revpatch=sbvmm（安装 config 保留）。重启即被列出、照片经 awdl0 收到。注意 hv_support 与本案无关。
+
+**Lesson / 教训**:
+1. **Install-time crutches must not leak into daily configs.** `revpatch=sbvmm` is install-only; in daily use it costs AirDrop receiving for a "software update" convenience that a natively-supported SMBIOS doesn't even need. / **安装期的拐杖不能带进日常配置**——代价是静默砍掉整个接收方向。
+2. **When a feature is silently missing (not erroring), audit the feature's *capability gates* — daemons publish them in boot logs** (`Device Capabilities (… AirDrop: …)`, `AirDrop not ready: …`). Privacy redaction hides the values, but a two-OS differential of the inputs (boot-args) can still isolate the culprit. / 功能"静默缺席"时，去读守护进程开机时的能力门禁日志；值被隐私遮蔽没关系，两系统输入差分一样能定位。
+3. **Decode the BLE TLVs**: `log show --predicate 'process == "bluetoothd"' | grep "manufacturer data"` gives you the literal advertisement bytes — decoding the Continuity TLV types tells you which services are actually on air. / 抓 BLE 厂商数据解码 TLV，广播里有什么服务一目了然。
+
+---
+
 ## Bonus Fix: Hidden-Network Auto-Join Priority / 附：隐藏网络自动加入优先级
 
 **Symptom / 症状**: Mac always auto-joins the visible `BlizzardNew-5G` instead of the hidden preferred SSID, even after manually joining the hidden one (the join log even records `UserPreferredNetworkNames`). / 明明手动连过隐藏网络（日志都记了偏好），还是总连可见网络。

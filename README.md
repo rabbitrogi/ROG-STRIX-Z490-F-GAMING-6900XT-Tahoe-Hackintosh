@@ -30,7 +30,9 @@
 | USB | ✅ | Custom USBMap, Tahoe dual-format keys |
 | Sensors / 传感器 | ✅ | VirtualSMC suite + SMCRadeonSensors |
 | WiFi / BT | ✅ **WiFi + AirDrop** | EFI injection (Skywalk 1.0 + IO80211FamilyLegacy + AirPortBrcmNIC, native Skywalk blocked) + OCLP-Mod framework patches + AMFIPass + SIP `0xFFFF` + `ipc_control_port_options=0` — see INSTALL-LOG pit 14 / EFI 注入 + 框架补丁混合路线，见实录坑 14 |
-| AirDrop | ✅ **Working** | Requires the WiFi route above **plus** BlueToolFixup + BlueWakeFixup (Bluetooth discovery) / 需上述路线 + 蓝牙双修复 |
+| AirDrop | ✅ **Both directions / 双向** | Send AND receive verified (photo transfer iPhone↔Mac). Requires: no `revpatch=sbvmm` in daily boot-args (pit 16) + the WiFi formula above / 发送与接收均验证；日常 boot-args 禁带 revpatch=sbvmm |
+| DRM | ✅ Chrome/Widevine | Netflix verified after dropping the amfi trio (pit 15); Safari/FairPlay untested / 删 amfi 三件套后 Netflix 验证通过；Safari 未测 |
+| Onboard audio / 板载音频 | ➖ Off by default | AppleALC bundled but disabled — audio via AirPods (BT) or DP monitor; re-enable AppleALC if you need rear jacks / 走蓝牙或 DP 音频；需要背板接口自行启用 AppleALC |
 | Sleep / 睡眠 | ❓ Untested / 未测试 | |
 
 ## Repository Layout / 仓库内容
@@ -86,8 +88,8 @@ So: install with the minimal config (5 kexts), swap to the full config (15 kexts
 | | Installer / 安装器 | Daily / 日常 |
 |---|---|---|
 | File / 文件 | `config.plist` | `config-postinstall.plist` → overwrite `config.plist` after install / 装完覆盖 |
-| Kexts ON / 启用 | 5 (Lilu, VirtualSMC, USBMap, AppleIntelI210Ethernet, RestrictEvents) | 17 (all / 全部) |
-| boot-args | `-v keepsyms=1 debug=0x100 revpatch=sbvmm e1000=0` | `+ agdpmod=pikera alcid=1 ipc_control_port_options=0 amfi=0x80 amfi_get_out_of_my_way=0x1 cs_enforcement_disable=1 -amfipassbeta` |
+| Kexts ON / 启用 | 5 (Lilu, VirtualSMC, USBMap, AppleIntelI210Ethernet, RestrictEvents) | 14 of 17 (all except AppleALC / BlueToolFixup / BlueWakeFixup — see formula) |
+| boot-args | `-v keepsyms=1 debug=0x100 revpatch=sbvmm e1000=0` | `-v keepsyms=1 debug=0x100 e1000=0 -amfipassbeta agdpmod=pikera ipc_control_port_options=0` — **note: no `revpatch=sbvmm`, no `alcid`, no amfi args** |
 | SIP (`csr-active-config`) | `0x0000` (fully on / 全开) | `0xFFFF` (fully off — required by the WiFi+AirDrop route / 全关，WiFi+AirDrop 路线所需) |
 | WhateverGreen | ❌ | ✅ |
 
@@ -99,9 +101,10 @@ So: install with the minimal config (5 kexts), swap to the full config (15 kexts
 |---|---|
 | Kernel / 内核 | EFI-inject `IOSkywalkFamily` (v1.0) + `IO80211FamilyLegacy` + its **`AirPortBrcmNIC` plugin (must be listed as its own `Kernel→Add` entry — OC does NOT auto-load plugins inside a parent kext!)**, and **Block** native `com.apple.iokit.IOSkywalkFamily` (MinKernel 23.0.0) |
 | Userspace / 用户态 | OCLP-Mod root-patched frameworks (IO80211Old.dylib, WiFiPeerToPeerOld.dylib, LibSystemShim) stay system-side |
-| AMFI | `AMFIPass.kext` enabled + `-amfipassbeta` + `amfi=0x80 amfi_get_out_of_my_way=0x1 cs_enforcement_disable=1`, under **SIP `csr-active-config=0xFFFF`** — with SIP fully off the patched frameworks pass validation even when AMFIPass loses its race, which kills the boot lottery |
+| AMFI | `AMFIPass.kext` + `-amfipassbeta`, under **SIP `csr-active-config=0xFFFF`** — **do NOT add `amfi=0x80`/`amfi_get_out_of_my_way`/`cs_enforcement_disable`**: they nuke AMFI entirely and kill DRM (pit 15) while AMFIPass under SIP-off already covers the frameworks |
 | Daemon compat / 守护进程 | `ipc_control_port_options=0` — patched daemons crash without it on Sonoma+ |
-| AirDrop | `BlueToolFixup` + `BlueWakeFixup` (Bluetooth discovery/handoff) |
+| Bluetooth / 蓝牙 | **None needed** — an Apple-firmware BCM94360's USB Bluetooth is native on Tahoe 26 (`Vendor ID 0x004C`); BlueToolFixup/BlueWakeFixup bundled but disabled (only third-party-USB-ID cards need them) |
+| ⚠️ **Do NOT carry `revpatch=sbvmm` into the daily config** | The RestrictEvents VMM spoof (install-time only) makes sharingd treat the Mac as a virtual machine → **AirDrop receiving silently disabled** (pit 16) |
 
 Why EFI injection + system-side patches don't double-load here (refining pit 12): on 26.6.2 `kmutil` never admits the patcher's unsigned kexts into the KC, so the system-side copies never load — EFI injection is the *only* kernel-side source. / 26.6.2 的 kmutil 根本不会把补丁工具装进系统侧的未签名 kext 收进 KC，系统侧副本永远不加载——EFI 注入是内核侧唯一来源，所以不冲突（坑 12 结论的修正版）。
 
@@ -120,12 +123,12 @@ Why EFI injection + system-side patches don't double-load here (refining pit 12)
 | BlueToolFixup | 2.7.2 | Tahoe bluetoothd patches / 含 Tahoe 补丁 |
 | AppleIntelI210Ethernet | 2.3.1 | spoof + `e1000=0` — all three required / 三件缺一不可 |
 | SMCRadeonSensors | 2.4.0 | Replaces RadeonSensor+SMCRadeonGPU / 取代旧双 kext |
-| RestrictEvents | 1.1.6 | **Critical for Tahoe install** / **安装关键** — `revpatch=sbvmm` |
+| RestrictEvents | 1.1.6 | **Critical for Tahoe install** (`revpatch=sbvmm`) — **but strip it from the daily config or AirDrop receive dies** (pit 16) / **安装关键**，但日常 config 必须去掉该参数 |
 | AMFIPass | 1.4.1 | Final release (upstream repo deleted). Under SIP `0xFFFF` it loads reliably and its race (pit 13) stops being fatal / SIP 全关下稳定加载，竞态不再致命 |
 | IO80211FamilyLegacy + AirPortBrcmNIC + IOSkywalkFamily | OCLP payload originals | EFI-injected kernel WiFi stack / EFI 注入的内核 WiFi 栈 |
-| BlueToolFixup | 2.7.2 | Tahoe bluetoothd patches / 含 Tahoe 补丁 — **required for AirDrop / AirDrop 必需** |
-| BlueWakeFixup | 2.7.2 | BT wake robustness / 蓝牙唤醒修复 — **required for AirDrop / AirDrop 必需** |
+| BlueToolFixup + BlueWakeFixup | 2.7.2 | **Bundled but disabled** — Apple-firmware BCM94360 Bluetooth is native on Tahoe; enable only for third-party-USB-ID cards / 苹果固件卡原生免驱，仅第三方卡需要 |
 | USBMap | Custom / 定制 | Dual-format keys (Sequoia + Tahoe) / 双格式键名 |
+| AppleALC | 1.9.7 | **Bundled but disabled** — onboard codec unused in this build (BT/DP audio); re-enable + `alcid=` for rear jacks / 本构建未启用；需要背板音频自行开启 |
 | AppleBCMWLANCompanion | 1.1.0 | **Alternative route** (native driver, WiFi-only, no AirDrop) — bundled but unused by the daily config / **备选路线**（原生驱动、仅 WiFi、无 AirDrop）——已捆绑但日常配置未启用 |
 
 ## BIOS Settings / BIOS 设置
