@@ -248,21 +248,6 @@
 				8hUAAA==
 				</data>
 			</dict>
-			<key>PciRoot(0x0)/Pci(0x1C,0x7)/Pci(0x0,0x0)</key>
-			<dict>
-				<key>bcmc-default-country-code</key>
-				<string>CN</string>
-				<key>bcmc-firmware-hash</key>
-				<data>
-				v0z8I+6VKj2C7zOg9fh4UyAcmPG+0DSHapEPNU83hi0=
-				</data>
-				<key>bcmc-firmware-path</key>
-				<string>/usr/local/share/firmware/wifi/brcmfmac43602-pcie_7.35.177.61.bin</string>
-				<key>bcmc-srom-slide</key>
-				<data>
-				AAAAAA==
-				</data>
-			</dict>
 			<key>PciRoot(0x0)/Pci(0x1F,0x3)</key>
 			<dict>
 				<key>layout-id</key>
@@ -300,24 +285,6 @@
 				<string></string>
 				<key>MinKernel</key>
 				<string>12.0.0</string>
-				<key>PlistPath</key>
-				<string>Contents/Info.plist</string>
-			</dict>
-			<dict>
-				<key>Arch</key>
-				<string>x86_64</string>
-				<key>BundlePath</key>
-				<string>AppleBCMWLANCompanion.kext</string>
-				<key>Comment</key>
-				<string>V1.1.0 | Native Broadcom WiFi via AppleBCMWLAN driver</string>
-				<key>Enabled</key>
-				<true/>
-				<key>ExecutablePath</key>
-				<string>Contents/MacOS/AppleBCMWLANCompanion</string>
-				<key>MaxKernel</key>
-				<string></string>
-				<key>MinKernel</key>
-				<string></string>
 				<key>PlistPath</key>
 				<string>Contents/Info.plist</string>
 			</dict>
@@ -383,7 +350,7 @@
 				<key>Comment</key>
 				<string>V1.7.0</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/WhateverGreen</string>
 				<key>MaxKernel</key>
@@ -491,7 +458,7 @@
 				<key>Comment</key>
 				<string>V1.0</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/IOSkywalkFamily</string>
 				<key>MaxKernel</key>
@@ -509,7 +476,7 @@
 				<key>Comment</key>
 				<string>V1200.12.2b1</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/IO80211FamilyLegacy</string>
 				<key>MaxKernel</key>
@@ -527,7 +494,7 @@
 				<key>Comment</key>
 				<string>V1400.1.1</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/AirPortBrcmNIC</string>
 				<key>MaxKernel</key>
@@ -545,7 +512,7 @@
 				<key>Comment</key>
 				<string>V1.4.1</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/AMFIPass</string>
 				<key>MaxKernel</key>
@@ -579,11 +546,29 @@
 				<key>BundlePath</key>
 				<string>RestrictEvents.kext</string>
 				<key>Comment</key>
-				<string>V1.1.6 | revpatch=sbvmm (OTA update + install compat)</string>
+				<string>V1.1.6 | revpatch=sbvmm for Tahoe install (MSU hardware check bypass)</string>
 				<key>Enabled</key>
 				<true/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/RestrictEvents</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string></string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<dict>
+				<key>Arch</key>
+				<string>Any</string>
+				<key>BundlePath</key>
+				<string>BlueWakeFixup.kext</string>
+				<key>Comment</key>
+				<string>Added by Wi-Fi Patcher Pro</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/BlueWakeFixup</string>
 				<key>MaxKernel</key>
 				<string></string>
 				<key>MinKernel</key>
@@ -616,7 +601,7 @@
 				<key>Comment</key>
 				<string></string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>Identifier</key>
 				<string>com.apple.iokit.IOSkywalkFamily</string>
 				<key>MaxKernel</key>
@@ -888,7 +873,7 @@
 				<key>Base</key>
 				<string></string>
 				<key>Comment</key>
-				<string>board-id &gt; board-ix (AGDP fix)</string>
+				<string>board-id &gt; board-ix (AGDP fix, replaces agdpmod=pikera without WhateverGreen)</string>
 				<key>Count</key>
 				<integer>0</integer>
 				<key>Enabled</key>
@@ -934,7 +919,7 @@
 			<key>CustomSMBIOSGuid</key>
 			<false/>
 			<key>DisableIoMapper</key>
-			<false/>
+			<true/>
 			<key>DisableIoMapperMapping</key>
 			<false/>
 			<key>DisableLinkeditJettison</key>
@@ -1222,10 +1207,10 @@
 				Rg==
 				</data>
 				<key>boot-args</key>
-				<string>-v agdpmod=pikera keepsyms=1 debug=0x100 alcid=1 e1000=0 ipc_control_port_options=0 revpatch=sbvmm wlan.pcie.detectsabotage=0</string>
+				<string>-v keepsyms=1 debug=0x100 revpatch=sbvmm e1000=0 amfi=0x80 amfi_get_out_of_my_way=0x1 cs_enforcement_disable=1 -amfipassbeta agdpmod=pikera alcid=1 ipc_control_port_options=0</string>
 				<key>csr-active-config</key>
 				<data>
-				AAAAAA==
+				//8AAA==
 				</data>
 				<key>prev-lang:kbd</key>
 				<data>

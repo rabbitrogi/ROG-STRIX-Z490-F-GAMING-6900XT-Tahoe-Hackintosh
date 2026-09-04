@@ -158,6 +158,41 @@
 
 ---
 
+## Pit 14: The AirDrop Endgame — Every Patcher Dead, One Config Entry Away / AirDrop 终局战：全工具阵亡，差一条配置
+
+**Symptom / 症状**: BCMC route (pit 13's fix) gives stable full-speed WiFi but **no AirDrop**. Chasing AirDrop: OCLP-Plus, OCLP-Mod and WiFi Patcher Pro all apply "successful" patches, yet the WiFi toggle won't even turn on. / BCMC 路线稳定满速但无 AirDrop。追击 AirDrop 的过程中：三家 root patch 工具全部"打补丁成功"，但 WiFi 开关根本打不开。
+
+**Forensics / 取证**（each dead end eliminated one by one / 每个死胡同逐一排除）:
+
+1. **WiFi Patcher Pro "missing Sparkle"** — red herring. The app bundle was complete (Sparkle 2.9.3, XPC services, universal binary); the launch failure was just Gatekeeper quarantine on browser downloads. A curl-downloaded copy ran fine. / 红鲱鱼：app 完整，是浏览器下载的 quarantine 标记导致。
+2. **Root patches ARE applied** — patched frameworks (IO80211Old.dylib, WiFiPeerToPeerOld.dylib, LibSystemShim) verified system-side, and `BootKernelExtensions.kc` rebuilt containing `IOSkywalkFamily 1.0` + `IO80211Family 1200.13.1`. The patches land; they just can't *load*. / 补丁确实打上了（文件在、KC 里有），只是加载不了。
+3. **`amfi=0x80 amfi_get_out_of_my_way=0x1 cs_enforcement_disable=1` (AMFIPass removed)** — deterministic boot death: every patched dylib fails `local signing public key not initialized` → `code signature validation failed` → launchd never completes. Apple has closed the boot-arg AMFI bypass on 26.6.2. / 纯 boot-arg 旁路在 26.6.2 上已被 Apple 封死：补丁框架全部校验失败，系统起不来。
+4. **Recovery saga / 恢复拉锯**: with patches installed but unloadable, Tahoe boot-loops. `bless --last-sealed-snapshot` fails ("Read-only file system" — SSV); APFS snapshot forensics show the clean `com.apple.os.update` snapshot (XID 420) still intact next to the broken patched one (XID 476238, "Will root to"). Blessing the clean snapshot from another macOS fails; **the pragmatic fix was reinstalling Tahoe**. / 打了补丁却加载不了的 Tahoe 陷入启动循环；bless 回退快照被 SSV 只读挡死。快照取证显示干净快照还在，但无法切回——最终务实解法：重装。
+5. **Fresh install + OCLP-Mod again** — patches still dead, but for a NEW reason: **Tahoe 26.6.2 `kmutil` refuses unsigned kexts entirely.** `sudo kmutil load -b com.apple.driver.AirPortBrcmNIC` → `not found`. Manually copying kexts to `/tmp`, `chown -R 0:0`, and loading them one by one *works at the kext level* — but the NIC stays dead: PCI personality matching must happen at boot, not post-hoc. / 重装后再打补丁仍死——新原因：26.6.2 的 kmutil 全面收紧，未签名 kext 既进不了 KC 也 load 不到。手动逐个加载可行但网卡无反应：PCI 匹配必须发生在启动阶段。
+6. **SIP `0xFFFF0000` breakthrough / SIP 全关突破口**: with `csr-active-config=0xFFFF`, unsigned EFI-injected kexts load again — AMFIPass included. The pit-13 lottery also stops being fatal: even when AMFIPass loses its race, fully-disabled SIP lets the patched frameworks pass validation anyway. / SIP 全关后未签名 kext 恢复可加载，且即便 AMFIPass 竞态输了，框架校验也能过——抽签机拆了。
+
+**Root cause / 根因**（the actual missing piece / 真正缺的那一块）: **`AirPortBrcmNIC.kext` — the WiFi driver itself — was `Enabled=false` in `Kernel→Add`.** OpenCore does **not** auto-load plugins bundled inside a parent kext; every plugin needs its own explicit `Add` entry (`IO80211FamilyLegacy.kext/Contents/PlugIns/AirPortBrcmNIC.kext`). IOSkywalkFamily and IO80211FamilyLegacy were injected — the stack loaded — but the driver that binds to the actual PCI device was never in the boot set. Compounding it: `BlueToolFixup` was off (AirDrop needs Bluetooth discovery) and `ipc_control_port_options=0` had been dropped from boot-args (patched daemons crash without it on Sonoma+). / **WiFi 驱动本体 AirPortBrcmNIC 在 Kernel→Add 里是 Enabled=false。** OC 不会自动加载父 kext 内的插件——每个插件必须有独立条目。栈加载了、驱动没加载。雪上加霜：BlueToolFixup 关着（AirDrop 靠蓝牙发现）、boot-args 丢了 ipc_control_port_options=0（打补丁的守护进程会崩）。
+
+**Fix / 解法**: The shipped daily config = **EFI-inject the legacy kernel stack (Skywalk 1.0 + IO80211FamilyLegacy + AirPortBrcmNIC plugin, all `MinKernel=23.0.0`) + Block native `com.apple.iokit.IOSkywalkFamily`** so it can't conflict, **OCLP-Mod framework patches stay system-side** (they own userspace), **AMFIPass + `-amfipassbeta` + the amfi boot-args + SIP `0xFFFF`** so validation passes regardless of the race, **BlueToolFixup + BlueWakeFixup** for AirDrop, **`ipc_control_port_options=0`** for the daemons. Result: WiFi connects at full speed, **AirDrop fully working** — one of the very few confirmed AirDrop-working Tahoe 26.6.2 hackintosh builds. / 见仓库日常 config：EFI 注入内核栈（含 AirPortBrcmNIC 插件）+ 屏蔽原生 Skywalk + OCLP 框架补丁留在系统侧 + AMFIPass/SIP 全关保校验 + 蓝牙双修复 + IPC 参数。WiFi 满速、AirDrop 全通。
+
+**Lesson / 教训**:
+1. **A kext stack loading ≠ the driver loading.** Verify with `sudo kmutil inspect | grep -iE "skywalk|80211|brcm"` that the *leaf* driver (the one with the PCI personality) is in the loaded list — parent/child `Enabled` states are independent in OpenCore. / 栈加载了不等于驱动加载了：OC 里父/子条目的 Enabled 互相独立，必须验证叶子驱动。
+2. **Pit 12's "EFI injection vs root patches are mutually exclusive" needs refining on 26.6.2**: they conflict only when both provide the *kernel-side* kexts. Since 26.6.2 `kmutil` never admits the patcher's unsigned kexts into the KC, EFI injection becomes the only kernel-side source — and the hybrid (EFI kernel + patched userspace) is not just possible but **the** working formula. / 坑 12 的"互斥"结论在 26.6.2 上要修正：只有内核侧双载才冲突；kmutil 收紧后 EFI 注入成了内核侧唯一来源，混合路线反而是唯一正解。
+3. **When the enabler is racy, remove the stakes**: SIP fully off made AMFIPass's race irrelevant — the lottery stopped being a lottery because both outcomes now boot. Debugging tip: change the environment so failures can't be fatal, then fix the actual gap. / 让竞态变得无关紧要：SIP 全关后输赢都能启动。先把环境改成"失败不致命"，再补真正的缺口。
+4. **A poisoned system volume is often cheaper to reinstall than to surgically revert** — SSV read-only + bless limitations + snapshot selector buried in APFS metadata make in-place recovery a multi-hour trap. Snapshots (clean `os.update` vs patched `bless`) at least let you *diagnose* precisely what state you're in. / 被污染的系统卷，重装往往比手术式回滚便宜。快照对比至少能精确诊断现状。
+
+---
+
+## Bonus Fix: Hidden-Network Auto-Join Priority / 附：隐藏网络自动加入优先级
+
+**Symptom / 症状**: Mac always auto-joins the visible `BlizzardNew-5G` instead of the hidden preferred SSID, even after manually joining the hidden one (the join log even records `UserPreferredNetworkNames`). / 明明手动连过隐藏网络（日志都记了偏好），还是总连可见网络。
+
+**Root cause / 根因**: On Sonoma+ known networks live in `/Library/Preferences/com.apple.wifi.known-networks.plist`; entries default to auto-join when no `AutoJoin` key exists. A broadcasting visible network wins the race against a hidden SSID that requires directed probes. / 可见网络的广播帧永远比隐藏网络的定向探测先到。
+
+**Fix / 解法**: Set `AutoJoin=false` on the visible network's entry and `AutoJoin=true` on the hidden one (editable from any other macOS install with the target Data volume mounted — file is `root:wheel 600`; verify with a key-count diff that the plistlib round-trip lost nothing). GUI equivalent: System Settings → Wi-Fi → ⓘ on the visible network → uncheck "Automatically join". Watch out: networks added via `Cloud Sync` can get their auto-join re-synced by iCloud. / 给可见网络条目写 AutoJoin=false、隐藏网络写 true（可从另一套 macOS 直接改目标卷上的文件；注意 iCloud 同步可能覆盖）。
+
+---
+
 ## Forensic Toolkit / 取证工具箱
 
 | Evidence / 证据 | Location / 位置 | Shows / 能看到什么 |
@@ -167,7 +202,9 @@
 | ProgressMarkers | Target Preboot `/var/db/ProgressMarkers/` | Install progress milestones / 安装进度标记 |
 | bless state / bless 状态 | `bless --info /Volumes/<target>` | Continuation boot target / 续装引导指向 |
 | Volume groups / 卷组结构 | `diskutil apfs list <disk>` | System+Data+Preboot+Recovery+VM all present = phase-2 env ready / 五卷齐=续装环境就绪 |
-| kext injection / 注入验证 | `kextstat` in running system | What actually loaded / 实际加载了什么 |
+| kext injection / 注入验证 | `kextstat` in running system; on 26.x `sudo kmutil inspect | grep <id>` | What actually loaded / 实际加载了什么 |
+| APFS boot snapshots / 启动快照 | `diskutil apfs listSnapshots <vol>` | Which snapshot "Will root to"; clean `os.update` vs patched `bless` / 干净更新快照 vs 被 patch 的 bless 快照 |
+| Known WiFi networks / 已知网络 | `<Data>/Library/Preferences/com.apple.wifi.known-networks.plist` | `AutoJoin`/`Hidden` per SSID (root:wheel 600; edit from another macOS) / 每网络自动加入与隐藏标志 |
 | USB topology / USB 拓扑 | `ioreg -p IOUSB -w 0` | Hub chains, port addresses / Hub 链与端口地址 |
 | Config diff / 配置对比 | `plistlib` structural walk | Field-level drift between configs / 字段级差异 |
 
