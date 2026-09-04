@@ -1,6 +1,6 @@
 # ASUS ROG STRIX Z490-F GAMING + RX 6900 XT — macOS Tahoe 26 Hackintosh
 
-**English** · A fully working OpenCore 1.0.7 EFI and a field-tested installation guide for macOS Tahoe 26.6.2 on the ASUS ROG STRIX Z490-F GAMING with i9-10900K and Radeon RX 6900 XT. **WiFi + AirDrop both fully working** via a hybrid formula (EFI-injected legacy WiFi stack + OCLP root-patched frameworks + AMFIPass under SIP `0xFFFF`), after every off-the-shelf root patcher failed on 26.6.2. Features a dual-config architecture (installer-safe minimal config + full daily config) and a complete troubleshooting chronicle covering every failure mode hit during bring-up.
+**English** · A fully working OpenCore 1.0.7 EFI and a field-tested installation guide for macOS Tahoe 26.6.2 on the ASUS ROG STRIX Z490-F GAMING with i9-10900K, Radeon RX 6900 XT and BCM943602CDP WiFi card. **WiFi + AirDrop both fully working** via a hybrid formula (EFI-injected legacy WiFi stack + OCLP root-patched frameworks + AMFIPass under SIP `0xFFFF`), after every off-the-shelf root patcher failed on 26.6.2. Features a dual-config architecture (installer-safe minimal config + full daily config) and a complete troubleshooting chronicle covering every failure mode hit during bring-up.
 
 **中文** · 本仓库提供一套完整可用的 OpenCore 1.0.7 EFI 和经过实战验证的安装指南，用于在 ASUS ROG STRIX Z490-F GAMING（i9-10900K + RX 6900 XT）上安装 macOS Tahoe 26.6.2。**WiFi 与 AirDrop 双全通**——在 26.6.2 上所有现成 root patch 工具全部失效后，用"EFI 注入旧驱动栈 + OCLP 框架补丁 + SIP `0xFFFF` 下的 AMFIPass"混合配方达成。核心设计是"双 config 架构"（安装期最小化配置 + 日常全量配置），并附完整踩坑实录。
 
