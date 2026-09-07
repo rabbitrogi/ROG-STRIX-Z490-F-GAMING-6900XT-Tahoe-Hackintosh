@@ -213,6 +213,26 @@
 
 ---
 
+## Pit 17: AirDrop Receive Silently Dead — Wedged IDS Session / AirDrop 接收静默失效（IDS 会话淤塞型）
+
+**Symptom / 症状**: AirDrop **receive** direction silently dead — send works, Universal Clipboard works, Bluetooth works, but the iPhone's share sheet NEVER lists the Mac. Config byte-identical to a verified-working snapshot. / 接收方向静默失效：发送正常、通用剪贴板正常、蓝牙正常，iPhone 分享列表就是永不出现本机；config 与已验证良好的快照逐字节一致。
+
+**Forensics / 取证**: 12 suspects eliminated with evidence before the culprit was found — Bonjour server lifecycle (cycling the discoverability mode resurrected the server; still invisible), advertisement bytes (Mac's type-5 v3 advertisement byte-compared against the iPhone's: format/version/TempAuthTag all correct, 3 of 4 contact hashes matching), IP endpoint (type-9 pointed at the live en0 IP with port 7000 actually listening), AWDL mDNS (bidirectional Mac↔iPhone queries confirmed in mDNSResponder logs), Rapport (active `app_svc: com.apple.sharingd.AirDrop` endpoints), wired default-route placement, cross-subnet assumptions, iPhone-side state, iPhone age, sharingd capability gates (`AirDropUsable` set), the classic type-22 advertisement (absent on the working day too), and the contact hash store ("no hash updates needed"). The break came from watching IDS provisioning after an Apple ID re-login: `pseudonyms changed ×11` → provisioning still failing with `400 "Invalid URI"` (rate-limited + stale session) → after a **reboot**, `Provisioning pseudonym for service` succeeded → receive closed-loop transfer verified. / 12 个嫌疑逐一证据排除后，在 Apple ID 重登后的 IDS 配给日志里抓到真凶：伪匿名推送了 ×11 次但配给仍 400 失败（限频+旧会话）→ 重启后新会话配给成功 → 接收传输闭环。
+
+**Root cause / 根因**: A crash-loop session (here: the SIP-experiment boots that died 3–4 times mid-verbose) left the Apple ID/IDS session + daemon state wedged. Same perpetrator, same day, also wiped the WiFi known-networks preferences — crash-loops corrupt persistent session state in multiple places at once. Not config, not drivers, not the advertisement contents. / 崩溃循环把 Apple ID/IDS 会话与守护进程状态打淤（同一批崩溃同一天还弄丢过 WiFi 已知网络偏好——崩溃循环会一次性污染多处持久状态）。与 config、驱动、广播内容全部无关。
+
+**Fix / 解法** (first prescription for this symptom class / 此类症状的第一处方): **Apple ID sign-out → sign-in → REBOOT** (killing daemons alone is NOT enough — the wedge survives `pkill sharingd/rapportd/bluetoothd`) → **wait ~10 minutes** (IDS provisioning has rate-limit backoff) → test. / 登出重登 Apple ID → **必须重启**（只 pkill 守护进程冲不开）→ 等 10 分钟（IDS 配给限频退避）→ 测试。
+
+**Lesson / 教训**:
+1. **When receive is silently dead but send/clipboard/BT all work and config is provably unchanged, suspect session state (Apple ID/IDS), not software.** The advertisement layer can be byte-perfect while the identity layer is wedged. / 发送/剪贴板/蓝牙全通而接收独死、config 又没变时，先怀疑会话身份层（Apple ID/IDS），别死磕软件层。
+2. **Crash-loops are state-corruption events, not non-events**: each hard boot-failure can silently damage unrelated persistent state (here: IDS session + WiFi prefs the same morning). After any crash-loop marathon, expect weird follow-on failures and check prefs/identity first. / 崩溃循环是"状态污染事件"：每轮硬失败都可能悄悄损坏无关的持久状态。崩溃马拉松之后出现灵异故障，先查偏好与身份状态。
+3. **Honest footnote / 诚实脚注**: `Invalid URI` / `no active IDS account` errors CONTINUE during fully working transfers — they are chronic benign IDS background noise on hackintosh, not blockers. The exact micro-mechanism of the wedge was not fully determined (recorded as such on purpose). / 这些报错在正常传输期间也一直刷——是黑苹果 IDS 的慢性良性噪音，不是阻断项；淤塞的微观机理未完全定证，如实记录。
+4. **Decode the advertisements before theorizing**: `log show --predicate 'process == "bluetoothd"' | grep -E "manufacturer data|Adding data"` → Apple Continuity TLVs (type 5 = v3 AirDrop, type 9 = IP endpoint, type 16 = NearbyInfo, type 22 = classic AirDrop); peer's hashes directly visible in `CBDiscovery: Device found ... adH1-4` lines. / 先解码广播再立论：TLV 类型表 + 对端哈希都能从日志直接读出。
+5. **Discoverability-mode cycling** (Everyone → No One → Everyone) force-rebuilds the Bonjour Server/Application Service — the resurrection move when the server dies and won't self-heal. / "被发现模式"开关循环可强制重建 Bonjour 服务端——服务端死掉不自愈时的复活术。
+6. **Tahoe rejects `log config --mode private_data:on`** without a developer profile (Invalid Modes) — but post-hoc `log show` of the unified log is fully sufficient; streaming (`log stream`) via nohup fails without a tty. Don't fight the stream, pull the archive. / Tahoe 上解除日志遮蔽需开发者描述文件；直接事后 `log show` 就够了。
+
+---
+
 ## Bonus Fix: Hidden-Network Auto-Join Priority / 附：隐藏网络自动加入优先级
 
 **Symptom / 症状**: Mac always auto-joins the visible `BlizzardNew-5G` instead of the hidden preferred SSID, even after manually joining the hidden one (the join log even records `UserPreferredNetworkNames`). / 明明手动连过隐藏网络（日志都记了偏好），还是总连可见网络。

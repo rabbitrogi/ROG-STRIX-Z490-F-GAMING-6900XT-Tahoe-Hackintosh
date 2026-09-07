@@ -46,7 +46,7 @@
 | USB | ✅ | Custom USBMap, Tahoe dual-format keys |
 | Sensors / 传感器 | ✅ | VirtualSMC suite + SMCRadeonSensors |
 | WiFi / BT | ✅ **WiFi + AirDrop** | EFI injection (Skywalk 1.0 + IO80211FamilyLegacy + AirPortBrcmNIC, native Skywalk blocked) + OCLP-Mod framework patches + AMFIPass + SIP `0xFFFF` + `ipc_control_port_options=0` — see INSTALL-LOG pit 14 / EFI 注入 + 框架补丁混合路线，见实录坑 14 |
-| AirDrop | ✅ **Both directions / 双向** | Send AND receive verified (photo transfer iPhone↔Mac). Requires: no `revpatch=sbvmm` in daily boot-args (pit 16) + the WiFi formula above / 发送与接收均验证；日常 boot-args 禁带 revpatch=sbvmm |
+| AirDrop | ✅ **Both directions / 双向** | Send AND receive verified (photo transfer iPhone↔Mac). Requires: no `revpatch=sbvmm` in daily boot-args (pit 16) + the WiFi formula above; if receive ever goes silent → Apple ID re-login + reboot (pit 17) / 发送与接收均验证；日常 boot-args 禁带 revpatch=sbvmm；接收若静默失效 → 重登 Apple ID + 重启（坑 17） |
 | DRM | ✅ Chrome/Widevine | Netflix verified after dropping the amfi trio (pit 15); Safari/FairPlay untested / 删 amfi 三件套后 Netflix 验证通过；Safari 未测 |
 | Onboard audio / 板载音频 | ➖ Off by default | AppleALC bundled but disabled — audio via AirPods (BT) or DP monitor; re-enable AppleALC if you need rear jacks / 走蓝牙或 DP 音频；需要背板接口自行启用 AppleALC |
 | Sleep / 睡眠 | ❓ Untested / 未测试 | |
@@ -123,6 +123,8 @@ So: install with the minimal config (5 kexts), swap to the full config (15 kexts
 | ⚠️ **Do NOT carry `revpatch=sbvmm` into the daily config** | The RestrictEvents VMM spoof (install-time only) makes sharingd treat the Mac as a virtual machine → **AirDrop receiving silently disabled** (pit 16) |
 
 Why EFI injection + system-side patches don't double-load here (refining pit 12): on 26.6.2 `kmutil` never admits the patcher's unsigned kexts into the KC, so the system-side copies never load — EFI injection is the *only* kernel-side source. / 26.6.2 的 kmutil 根本不会把补丁工具装进系统侧的未签名 kext 收进 KC，系统侧副本永远不加载——EFI 注入是内核侧唯一来源，所以不冲突（坑 12 结论的修正版）。
+
+**If AirDrop receive ever goes silent** (send/clipboard/Bluetooth still fine, iPhone never lists the Mac): first prescription is **Apple ID sign-out → sign-in → reboot → wait 10 min** — wedged IDS session state, most often collateral damage from a crash-loop; NOT a config problem (see pit 17). / 若 AirDrop 接收静默失效（发送/剪贴板/蓝牙正常，iPhone 永不显示本机）：第一处方是 **Apple ID 登出重登 → 重启 → 等 10 分钟**——IDS 会话淤塞，多为崩溃循环的附带损伤，不是 config 问题（见坑 17）。
 
 **Alternative / 备选路线 (no AirDrop):** [AppleBCMWLANCompanion](https://github.com/0xFireWolf/AppleBCMWLANCompanion) drives the card through Apple's *native* stack — full-speed WiFi, **SIP fully on, no patches, no AMFIPass** — but no AirDrop. Kext stays bundled; disable the 4 EFI WiFi entries + AMFIPass, enable BCMC, set SIP `0x0000`, add `wlan.pcie.detectsabotage=0`, and skip the OCLP-Mod patch step. / BCMC 路线：满速 WiFi、SIP 全开、零补丁，但无 AirDrop。kext 仍在仓库中。
 
