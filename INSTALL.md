@@ -121,8 +121,10 @@ The daily config already EFI-injects the legacy kernel WiFi stack (IOSkywalkFami
 Verify / 验证:
 
 ```bash
-sudo kmutil inspect | grep -icE "skywalk|80211|brcm|amfipass"   # expect >= 5
+kmutil showloaded | grep -iE "skywalk|80211|brcm|amfipass"
 ```
+
+Expect to see `IOSkywalkFamily`, `IO80211FamilyLegacy`, `AirPort.BrcmNIC` and `AMFIPass` all listed. (Use `showloaded`, NOT `kmutil inspect` — EFI-injected kexts are not in the system's KC database, so `inspect` misses AMFIPass/Brcm while `showloaded` queries the running kernel.) / 应看到这四个名字全部出现。（必须用 `showloaded` 而非 `kmutil inspect`——EFI 注入的 kext 不在系统 KC 数据库里，`inspect` 看不到 AMFIPass/Brcm，`showloaded` 查询的是运行中的内核。）
 
 AirDrop (send + receive), DRM (Chrome/Netflix), and Bluetooth (AirPods — the Apple-firmware card is native, no BT kexts) should all be live. For the full formula rationale and the alternative no-AirDrop BCMC route, see README's "Winning Formula" section. / AirDrop 双向、DRM、蓝牙（苹果固件卡原生免驱）全部就绪。完整配方原理与 BCMC 备选路线见 README"制胜配方"节。
 

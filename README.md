@@ -1,8 +1,8 @@
 # ASUS ROG STRIX Z490-F GAMING + RX 6900 XT — macOS Tahoe 26 Hackintosh
 
-**English** · A fully working OpenCore 1.0.7 EFI and a field-tested installation guide for macOS Tahoe 26.6.2 on the ASUS ROG STRIX Z490-F GAMING with i9-10900K, Radeon RX 6900 XT and BCM943602CDP WiFi card. **WiFi + AirDrop both fully working** via a hybrid formula (EFI-injected legacy WiFi stack + OCLP root-patched frameworks + AMFIPass under SIP `0xFFFF`), after every off-the-shelf root patcher failed on 26.6.2. Features a dual-config architecture (installer-safe minimal config + full daily config) and a complete troubleshooting chronicle covering every failure mode hit during bring-up.
+**English** · A fully working OpenCore 1.0.7 EFI and a field-tested installation guide for macOS Tahoe 26.6.2 on the ASUS ROG STRIX Z490-F GAMING with i9-10900K, Radeon RX 6900 XT and BCM943602CS WiFi card. **WiFi + AirDrop both fully working** via a hybrid formula (EFI-injected legacy WiFi stack + OCLP root-patched frameworks + AMFIPass under SIP `0xFFFF`), after every off-the-shelf root patcher failed on 26.6.2. Features a dual-config architecture (installer-safe minimal config + full daily config) and a complete troubleshooting chronicle covering every failure mode hit during bring-up.
 
-**中文** · 本仓库提供一套完整可用的 OpenCore 1.0.7 EFI 和经过实战验证的安装指南，用于在 ASUS ROG STRIX Z490-F GAMING（i9-10900K + RX 6900 XT + BCM943602CDP 无线网卡）上安装 macOS Tahoe 26.6.2。**WiFi 与 AirDrop 双全通**——在 26.6.2 上所有现成 root patch 工具全部失效后，用"EFI 注入旧驱动栈 + OCLP 框架补丁 + SIP `0xFFFF` 下的 AMFIPass"混合配方达成。核心设计是"双 config 架构"（安装期最小化配置 + 日常全量配置），并附完整踩坑实录。
+**中文** · 本仓库提供一套完整可用的 OpenCore 1.0.7 EFI 和经过实战验证的安装指南，用于在 ASUS ROG STRIX Z490-F GAMING（i9-10900K + RX 6900 XT + BCM943602CS 无线网卡）上安装 macOS Tahoe 26.6.2。**WiFi 与 AirDrop 双全通**——在 26.6.2 上所有现成 root patch 工具全部失效后，用"EFI 注入旧驱动栈 + OCLP 框架补丁 + SIP `0xFFFF` 下的 AMFIPass"混合配方达成。核心设计是"双 config 架构"（安装期最小化配置 + 日常全量配置），并附完整踩坑实录。
 
 ---
 
@@ -31,7 +31,7 @@
 | GPU / 显卡 | AMD Radeon RX 6900 XT 16GB (Navi 21, `0x73BF`) | ✅ Native / 原生支持 (MacPro7,1 ships W6900X — same silicon) |
 | RAM / 内存 | 64GB DDR4 3600 | ✅ |
 | Ethernet / 有线网卡 | Intel I225-V (onboard) | ✅ Injected AppleIntelI210Ethernet 2.3.1 + device-id spoof `15F3→15F2` + boot-arg `e1000=0` |
-| WiFi / BT / 无线蓝牙 | Broadcom BCM94360 family (upgraded) | ✅ **WiFi + AirDrop** — EFI-injected legacy stack + OCLP root-patched frameworks + AMFIPass under SIP `0xFFFF` / EFI 注入旧驱动栈 + 框架补丁混合路线 |
+| WiFi / BT / 无线蓝牙 | Broadcom **BCM943602CS** (3-antenna variant, Apple firmware — BT reports `Vendor ID 0x004C`) | ✅ **WiFi + AirDrop** — EFI-injected legacy stack + OCLP root-patched frameworks + AMFIPass under SIP `0xFFFF` / EFI 注入旧驱动栈 + 框架补丁混合路线 |
 | Display / 显示器 | 6K (6144×3456) | ✅ |
 | Storage / 存储 | PM1735 6.4TB (Sequoia) + Intel DC P3600 800GB U.2/PCIe (Tahoe target) | ✅ |
 
