@@ -106,7 +106,7 @@ So: install with the minimal config (5 kexts), swap to the full config (15 kexts
 | File / 文件 | `config.plist` | `config-postinstall.plist` → overwrite `config.plist` after install / 装完覆盖 |
 | Kexts ON / 启用 | 5 (Lilu, VirtualSMC, USBMap, AppleIntelI210Ethernet, RestrictEvents) | 14 of 17 (all except AppleALC / BlueToolFixup / BlueWakeFixup — see formula) |
 | boot-args | `-v keepsyms=1 debug=0x100 revpatch=sbvmm e1000=0` | `-v keepsyms=1 debug=0x100 e1000=0 -amfipassbeta agdpmod=pikera ipc_control_port_options=0` — **note: no `revpatch=sbvmm`, no `alcid`, no amfi args** |
-| SIP (`csr-active-config`) | `0x0000` (fully on / 全开) | `0xFFFF` (fully off — required by the WiFi+AirDrop route / 全关，WiFi+AirDrop 路线所需) |
+| SIP (`csr-active-config`) | `0x0803` (install-time root-patch-friendly floor, field-tested) | `0xFFFF` (fully off — required by the WiFi+AirDrop route / 全关，WiFi+AirDrop 路线所需) |
 | WhateverGreen | ❌ | ✅ |
 
 ## WiFi + AirDrop on Tahoe 26.6.2 — The Winning Formula / 制胜配方

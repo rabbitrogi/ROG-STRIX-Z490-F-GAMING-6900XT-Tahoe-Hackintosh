@@ -106,41 +106,29 @@ sudo cp /Volumes/EFI/EFI/OC/config.plist /Volumes/EFI/EFI/OC/config-installer-ba
 sudo cp /Volumes/EFI/EFI/OC/config-postinstall.plist /Volumes/EFI/EFI/OC/config.plist
 ```
 
-Reboot → GPU acceleration, onboard audio, ethernet, Bluetooth, full USB should all be live. / 重启后显卡加速、声卡、有线网卡、蓝牙、USB 全速恢复。
+Reboot → GPU acceleration, ethernet, Bluetooth (native), full USB live. Onboard audio stays off by default in this build (AirPods/DP-monitor audio work; re-enable AppleALC + `alcid=` if you need rear jacks). / 重启后显卡加速、有线网卡、蓝牙（原生）、USB 全速恢复。本构建默认不开板载音频（AirPods/DP 音频可用；需要背板口就启用 AppleALC + `alcid=`）。
 
-## Step 6: WiFi via BCMC (native driver, no root patch) / 第 6 步：WiFi 用 BCMC 原生驱动方案
+> **Expect 1–3 automatic reboots on this first daily-config boot** — first-boot housekeeping (cryptex/Preboot maintenance), benign and self-resolving. Observed twice in the clean-install validation run: system rebooted itself mid-verbose twice, reached desktop on the third attempt. / **首次以日常 config 启动会自动重启 1–3 次**——首启维护（cryptex/Preboot），良性自愈。干净安装验证中实测两次。
 
-The daily config already ships with **AppleBCMWLANCompanion** enabled — it makes Apple's *native* Tahoe Broadcom driver accept your legacy BCM94360-family card. No root patches, no AMFIPass, SIP stays fully on. / 日常 config 已内置 **AppleBCMWLANCompanion**——让 Apple 在 Tahoe 里的原生 Broadcom 驱动认你的老卡。不打 root patch、不需要 AMFIPass、SIP 全开。
+## Step 6: WiFi + AirDrop via the Hybrid Formula / 第 6 步：WiFi + AirDrop（混合配方）
 
-What's left to do / 还需要做的：
+The daily config already EFI-injects the legacy kernel WiFi stack (IOSkywalkFamily 1.0 + IO80211FamilyLegacy + the **AirPortBrcmNIC plugin entry**, native Skywalk blocked) alongside AMFIPass under SIP `0xFFFF`. The only missing half is the userspace — the patched frameworks: / 日常 config 已 EFI 注入旧内核 WiFi 栈（含 AirPortBrcmNIC 插件条目、屏蔽原生 Skywalk）+ AMFIPass + SIP `0xFFFF`。只缺用户态那半——补丁框架：
 
-1. Download the firmware for your chip / 下载对应固件:
-   - BCM43602 (`14e4:43ba`): [`brcmfmac43602-pcie_7.35.177.61.bin`](https://github.com/0xFireWolf/AppleBCMWLANCompanion/raw/main/Firmwares/BCM43602/brcmfmac43602-pcie_7.35.177.61.bin) — sha256 `bf4cfc23ee952a3d82ef33a0f5f87853201c98f1bed034876a910f354f37862d`
-   - BCM4350 (`14e4:43a3`): see the [BCMC repo Firmwares dir](https://github.com/0xFireWolf/AppleBCMWLANCompanion/tree/main/Firmwares)
-2. Install it / 安装固件:
-   ```bash
-   sudo mkdir -p /usr/local/share/firmware/wifi/
-   sudo cp brcmfmac43602-pcie_7.35.177.61.bin /usr/local/share/firmware/wifi/
-   shasum -a 256 /usr/local/share/firmware/wifi/brcmfmac43602-pcie_7.35.177.61.bin  # must match the hash above / 必须匹配上面的哈希
-   ```
-3. Verify the config's DeviceProperties point at YOUR WiFi card's PCI path / 确认 config 里的 DeviceProperties 指向你的网卡 PCI 路径:
-   - This repo targets `PciRoot(0x0)/Pci(0x1C,0x7)/Pci(0x0,0x0)` (RP08 slot on this board). On the same board it's correct; verify with Hackintool if unsure. / 本仓库指向 RP08 槽；同板即正确，不确定就用 Hackintool 核对。
-4. Reboot → WiFi should come up natively. Verify / 重启后验证:
-   ```bash
-   kextstat | grep bcmc   # expect science.firewolf.bcmc
-   sudo dmesg | grep bcmc # chip bring-up log
-   ```
+1. Get [OCLP-Mod](https://github.com/laobamac/OCLP-Mod) — ethernet already works (or copy the app over from another install). / 拿到 OCLP-Mod——有线网此时可用（或从另一系统拷贝 app）。
+2. Run it → **Post-Install Root Patch** → reboot when prompted. / 运行 → Post-Install Root Patch → 按提示重启。
+3. WiFi toggle now works — join your network (hidden network: Other → type SSID). / WiFi 开关恢复——加入网络（隐藏网络：其他→输入 SSID）。
 
-### Optional: full-speed WiFi (VT-d) / 可选：满速 WiFi（开 VT-d）
+Verify / 验证:
 
-The shipped config uses the IOMapper path. For full speed (~500/250 Mbps vs ~130/130): enable **VT-d** in BIOS (Advanced → System Agent/CPU Configuration). The config already has `DisableIoMapper=false`, so it just works. If AppleVTD turns out broken on your board (symptom: WiFi driver won't load — system still boots fine), re-add device property `bcmc-disable-io-mapper` = `01000000` and disable VT-d again. / 出厂 config 走 IOMapper 路径。要满速就在 BIOS 开 VT-d（config 已配好）。若 AppleVTD 在你板子上不工作（症状：WiFi 驱动不加载，系统照常启动），加回 `bcmc-disable-io-mapper` 并关 VT-d 即可。
+```bash
+sudo kmutil inspect | grep -icE "skywalk|80211|brcm|amfipass"   # expect >= 5
+```
 
-### Known BCMC limitations (Beta) / BCMC 已知限制（Beta 阶段）
+AirDrop (send + receive), DRM (Chrome/Netflix), and Bluetooth (AirPods — the Apple-firmware card is native, no BT kexts) should all be live. For the full formula rationale and the alternative no-AirDrop BCMC route, see README's "Winning Formula" section. / AirDrop 双向、DRM、蓝牙（苹果固件卡原生免驱）全部就绪。完整配方原理与 BCMC 备选路线见 README"制胜配方"节。
 
-- **No AWDL → no AirDrop/Continuity** (firmware doesn't support it). Use LocalSend as an alternative. / **无 AWDL → AirDrop/Continuity 不可用**（固件不支持）。可用 LocalSend 替代。
-- Sleep/wake may panic (Beta). / 睡眠唤醒可能 panic（Beta 阶段）。
-- Disable BCMC before OTA updates (`-bcmcoff` boot-arg), re-enable after. / OTA 更新前加 `-bcmcoff` 禁用，更新完再启用。
-- Wrong Tx rate shown in WiFi menu (24 Mbps display bug). / WiFi 菜单显示速率不准（24 Mbps 显示 bug）。
+### If AirDrop receive ever goes silent / 若日后 AirDrop 接收静默失效
+
+First prescription: **Apple ID sign-out → sign-in → REBOOT → wait 10 min** — wedged IDS session state, most often collateral damage from a crash-loop; NOT a config problem (INSTALL-LOG pit 17). / 第一处方：**重登 Apple ID → 重启 → 等 10 分钟**——IDS 会话淤塞，多为崩溃循环附带损伤，不是 config 问题（坑 17）。
 
 ## Step 7: Verification Checklist / 第 7 步：验证清单
 
@@ -148,14 +136,18 @@ The shipped config uses the IOMapper path. For full speed (~500/250 Mbps vs ~130
 |---|---|
 | GPU acceleration / 显卡加速 | About This Mac → Graphics shows RX 6900 XT 16GB |
 | Ethernet / 有线网络 | System Settings → Network → en0 has IP |
-| Audio / 音频 | System Settings → Sound → output device list |
-| WiFi / BT | Menu bar icons appear and connect |
+| Audio / 音频 | AirPods (BT) or DP monitor output — onboard codec off by default / AirPods 或 DP 显示器输出——板载默认关闭 |
+| WiFi | Toggle works, connects at full speed / 开关可用，满速连接 |
+| AirDrop | Send (drag to iPhone) AND receive (iPhone share sheet lists this Mac) / 发送 + iPhone 分享列表能看到本机 |
+| DRM | Chrome → Netflix plays without protected-content errors / Chrome 放 Netflix 无报错 |
+| Bluetooth / 蓝牙 | AirPods connect and play / AirPods 可连可放 |
 | USB | Plug a USB drive, normal speed |
 | Sensors / 传感器 | Install [Stats](https://github.com/exelban/stats) — CPU/GPU temps |
 
 ## Maintenance / 日常维护
 
-- **Before macOS point updates / 小版本更新前**: revert root patches in OCLP-Plus (Revert Root Patches) → update → re-patch;
+- **Before macOS point updates / 小版本更新前**: revert root patches in OCLP-Mod (Revert Root Patches) → update → re-patch;
 - **OC / kext updates**: mount ESP (`sudo diskutil mount`), replace files; always run [ocvalidate](https://github.com/acidanthera/OpenCorePkg/releases) on modified configs;
-- **NVRAM weirdness / NVRAM 异常** (boot anomalies, boot-args not applying): OC picker → ResetNvram;
+- **Switching OSes / 双系统切换**: no NVRAM reset needed — the config's Delete+Add pins boot-args/SIP per boot. / 无需清 NVRAM——config 的 Delete+Add 每次启动固化生效；
+- **AirDrop receive goes silent / AirDrop 接收失效**: Apple ID re-login + reboot (pit 17) before touching anything else. / 先重登 Apple ID + 重启（坑 17），别急着动别的；
 - WhateverGreen is enabled in the daily config — **never enable it in the installer environment** (INSTALL-LOG.md pit 2). / WEG 在日常 config 中启用——**绝不要在安装器环境开启它**。
