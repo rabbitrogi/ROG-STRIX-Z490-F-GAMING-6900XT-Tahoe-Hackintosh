@@ -126,6 +126,10 @@ Why EFI injection + system-side patches don't double-load here (refining pit 12)
 
 **If AirDrop receive ever goes silent** (send/clipboard/Bluetooth still fine, iPhone never lists the Mac): first prescription is **Apple ID sign-out → sign-in → reboot → wait 10 min** — wedged IDS session state, most often collateral damage from a crash-loop; NOT a config problem (see pit 17). / 若 AirDrop 接收静默失效（发送/剪贴板/蓝牙正常，iPhone 永不显示本机）：第一处方是 **Apple ID 登出重登 → 重启 → 等 10 分钟**——IDS 会话淤塞，多为崩溃循环的附带损伤，不是 config 问题（见坑 17）。
 
+### Dual-boot architecture / 双系统最终架构（坑 18 结论）
+
+This machine runs **one proven EFI per OS** — do NOT attempt to unify them: Sequoia 15.8 and Tahoe 26.6 have conflicting validated requirements (SIP `0x0803` + AMFIPass-without-beta vs `0xFFFF` + AMFIPass-with-beta), and one ESP carries only one global csr/boot-args pair — unification is architecturally impossible under OpenCore's per-ESP NVRAM model (full requirement-proof and the forensic saga in pit 18). / 本机最终架构为**一盘一 EFI**，别尝试统一：两系统的验证解在全局变量上同时互斥，一个 ESP 只有一份全局 csr/boot-args——OpenCore 的 NVRAM 模型下无解（完整证明与取证过程见坑 18）。
+
 **Alternative / 备选路线 (no AirDrop):** [AppleBCMWLANCompanion](https://github.com/0xFireWolf/AppleBCMWLANCompanion) drives the card through Apple's *native* stack — full-speed WiFi, **SIP fully on, no patches, no AMFIPass** — but no AirDrop. Kext stays bundled; disable the 4 EFI WiFi entries + AMFIPass, enable BCMC, set SIP `0x0000`, add `wlan.pcie.detectsabotage=0`, and skip the OCLP-Mod patch step. / BCMC 路线：满速 WiFi、SIP 全开、零补丁，但无 AirDrop。kext 仍在仓库中。
 
 ## Software Versions / 软件版本清单

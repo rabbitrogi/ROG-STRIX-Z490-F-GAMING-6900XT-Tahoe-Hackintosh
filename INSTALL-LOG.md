@@ -233,6 +233,40 @@
 
 ---
 
+---
+
+## Pit 18: The Unified-EFI Death — One ESP Cannot Serve Two Masters / 统一 EFI 之死（架构级结论）
+
+**The experiment / 实验初衷**: Boot BOTH macOSes (Sequoia 15.8.1 + Tahoe 26.6.2) from ONE OpenCore ESP — copy the Tahoe EFI onto the Sequoia disk's ESP, get a single picker for both. Configs were diffed first: serials identical, WiFi-stack treatment identical, SecureBoot identical — only SIP (0803 vs FFFF), AMFIPass (-beta flag), and a handful of utility kexts differed. / 让两套系统共用一个 ESP——序列号一致、WiFi 栈一致、SecureBoot 一致，只有 SIP、AMFIPass 旗标和几个杂项 kext 不同。
+
+**Forensics / 取证**（three reboot marathons, ~16 boots, 8 photographed deaths, OCR-transcribed / 三轮重启马拉松，8 张死亡照片）:
+
+1. **Marathon 1 (4/6 dead)** — colliding with a Safari 27.2 update finalizing at the same moment: update-cryptex mount loops, an SSV seal-restore hang, and one real `kalloc use-after-free` panic in logd. The update eventually finished (its ephemeral staging volumes — the alarming mystery "disk4/disk5" — vanished), eliminating this factor. / 与 Safari 更新收尾撞车：更新 cryptex 挂载循环、封印重铸卡死、一次 kalloc UAF panic。更新完成（神秘的临时盘 disk4/disk5 自我拆除）后此因素排除。
+2. **Marathon 2 (3/5 dead, update gone)** — heterogeneous early-boot hangs with no panics: APFS stitched-list loops, AHCI+cryptex-clone freeze, WiFi+AppleKeyStore freeze. / 更新退场后仍随机死，死点散布在 early-boot 各处。
+3. **The conviction and the surgery / 定罪与手术** — AMFIPass-with-beta was convicted (pattern-mismatch memory corruption; the UAF panic + pit-2's old "-amfipassbeta corrupts Sequoia" note as evidence) and scoped off Sequoia via `MinKernel=25.0.0`. **Marathon 3 (0/5 alive)**: deaths CONTINUED with identical signatures — the surgery doubled as a controlled experiment and **exonerated AMFIPass** (while proving Sequoia genuinely needs it: success rate dropped 2/5 → 0/5 without it). / 手术本身成了对照实验：AMFIPass 无罪（且 Sequoia 确实离不开它）。
+4. **The corridor theory / 走廊理论** — the scattered freeze points all sit along the launchd-ignition → volume-mount → cryptex-graft corridor; a `posix_spawn(): 86: Bad CPU type` line betrayed daemons failing to spawn. The freezes are launchd **waiting forever on services that died earlier off-screen** — verbose shows the waiting room, not the corpse. / 冻结点全是"等死服务"的不同座位：滚屏只显示候诊室，不显示尸体。
+
+**Root cause / 根因（architectural）**: One ESP carries exactly ONE global `csr-active-config` and ONE global `boot-args` for every OS it boots. The two OSes' empirically-validated requirements conflict on BOTH variables simultaneously:
+
+| | SIP | AMFIPass |
+|---|---|---|
+| Sequoia 15.8.1's only proven combo | `0x0803` | loaded, **no** `-amfipassbeta` (beta flag = corruption lottery) |
+| Tahoe 26.6.2's only proven combo | `0xFFFF` (0803-family = pit-13 lottery) | loaded **with** `-amfipassbeta` (needed) |
+
+No single (csr, boot-args) pair satisfies both — scoping the kext per-OS cannot help because the FLAG is global. Unified EFI is impossible under OpenCore's per-ESP NVRAM model, not merely misconfigured. / 一个 ESP 只有一份全局 csr + boot-args，而两系统的唯一验证解在两个变量上同时互斥——kext 可以按内核分叉，旗标不能。这是模型级无解，不是参数没调对。
+
+**Fix / 解法**: Roll back — per-disk EFIs restored (Sequoia ESP = the "verygood" backup; Tahoe ESP untouched). Final architecture: **one proven EFI per OS, `cannotstart` directory preserved as evidence**. / 回滚为"一盘一 EFI"；失败现场保留为证据。
+
+**Lesson / 教训**:
+1. **Before unifying EFIs, tabulate each OS's validated (SIP, boot-args, kext) requirements and check for global-variable conflicts** — if they conflict, unification is dead on arrival and no amount of debugging will save it. / 统一前先列表核对各系统的验证解；全局变量冲突 = 出发点就死了。
+2. **A single-variable surgery is also an experiment** — this one convicted and acquitted at once (AMFIPass innocent of the hangs, guilty of being required). Negative results are results. / 单变量手术同时是对照实验，阴性结果也是结果。
+3. **Freeze location ≠ failure location**: userspace daemon validation failures cascade into silent waits far downstream. When freeze points scatter randomly across a corridor, suspect an upstream killer, not the corridor. / 冻结点≠死因点；死点随机散步时，去上游找杀手。
+4. **Never swap EFI mid-update-finalization, and revert root patches before OTA updates** (OCLP doctrine, violated twice in one day here: patches never reverted + EFI swapped under a finishing update). / 别在更新收尾期换 EFI；OTA 前回滚 root patch。
+5. **Ephemeral update staging volumes (mystery "disk4/disk5") are normal** — cryptex scratch containers that appear during finalization and self-dismantle. / 更新暂存盘是正常现象，别被吓到。
+6. **Version archaeology footnote**: the Sequoia EFI turned out to run OpenCore **1.0.0** (2024!) flawlessly through Sequoia 15.0→15.8.1, vs 1.0.7 on the Tahoe side — an additional uncontrolled confound, honestly recorded; it does not change the verdict (the requirement conflict is independently proven). OC ≥1.0.5 is the floor for macOS 26 kext injection ("Fixed kext injection compatibility issues with macOS 26", 1.0.5); 1.0.8 (current) contains nothing relevant to this rig — upgrades deferred until a reason exists. / 版本考古：1.0.0 活化石 vs 1.0.7；1.0.5 是 Tahoe 注入门槛；1.0.8 与本机无关，不升。
+
+---
+
 ## Bonus Fix: Hidden-Network Auto-Join Priority / 附：隐藏网络自动加入优先级
 
 **Symptom / 症状**: Mac always auto-joins the visible `BlizzardNew-5G` instead of the hidden preferred SSID, even after manually joining the hidden one (the join log even records `UserPreferredNetworkNames`). / 明明手动连过隐藏网络（日志都记了偏好），还是总连可见网络。
