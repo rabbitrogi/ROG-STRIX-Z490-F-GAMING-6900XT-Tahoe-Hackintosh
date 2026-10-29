@@ -153,16 +153,37 @@ This machine runs **one proven EFI per OS** — do NOT attempt to unify them: Se
 | AppleALC | 1.9.7 | **Bundled but disabled** — onboard codec unused in this build (BT/DP audio); re-enable + `alcid=` for rear jacks / 本构建未启用；需要背板音频自行开启 |
 | AppleBCMWLANCompanion | 1.1.0 | **Alternative route** (native driver, WiFi-only, no AirDrop) — bundled but unused by the daily config / **备选路线**（原生驱动、仅 WiFi、无 AirDrop）——已捆绑但日常配置未启用 |
 
-## BIOS Settings / BIOS 设置
+## BIOS Settings / BIOS 设置（field-checked against the official BIOS manual / 依据官方 BIOS 手册逐项核对）
 
-Mostly defaults; verify these / 基本默认即可，确认以下几项：
+**⚠️ BIOS flashes reset everything** — re-audit the full list below after any update (learned the hard way on BIOS 3401: it silently re-enabled SATA/AHCI and disabled VMX). When done, save the config as a named profile under **Tool → ASUS User Profile** for one-click recovery. / **刷 BIOS 会重置一切**，刷完按本清单全量核对（3401 就偷偷开了 AHCI、关了 VMX）。设完存一个 ASUS User Profile 命名档，一键恢复。
 
-| Setting / 设置项 | Value / 值 |
-|---|---|
-| Boot mode / 启动模式 | UEFI only, CSM off / 关闭 |
-| Secure Boot | Disabled / Other OS |
-| VT-d | Any / 任意 (`DisableIoMapper=true` in config) |
-| CFG Lock | No unlock needed / 无需解锁 (`AppleXcpmCfgLock=true` in config) |
+**MUST be OFF / 必须关闭：**
+
+| BIOS location / 位置 | Option / 选项 | Value | Why / 原因 |
+|---|---|---|---|
+| Boot → Secure Boot | OS Type | **Other OS** | Windows UEFI mode rejects OpenCore / 拒 OC |
+| Boot | Launch CSM | **Disabled** | Pure UEFI, OC 硬前提 |
+| Boot → Boot Configuration | Fast Boot | **Disabled** | OC picker needs early USB init / 启动菜单要键盘 |
+| Advanced → CPU Configuration | SGX | **Disabled** | Hackintosh troublemaker / 著名捣乱分子 |
+| Advanced → System Agent → Graphics | Primary Display / iGPU Multi-Monitor | **PEG / Disabled** | MacPro7,1 SMBIOS has no iGPU / 核显保持熄灭 |
+| Advanced → PCH-FW | PTT | **Disabled** | fTPM unused by macOS / 固件 TPM 无用 |
+| Advanced → Network Stack | Network Stack | **Disabled** | PXE not needed / 用不到 |
+| Advanced → Onboard Devices | Serial Port | **Off** | Cleanliness / 清洁 |
+| Advanced → PCH Storage | SATA Controller(s) | **Disabled**（本机无 SATA 设备）/ no SATA devices here | Also silences AHCI COMRESET verbose spam / 顺带消启动日志刷屏 |
+
+**MUST be ON / 必须开启：**
+
+| BIOS location / 位置 | Option / 选项 | Why / 原因 |
+|---|---|---|
+| Advanced → CPU Configuration | **Intel (VMX) Virtualization Technology = Enabled** | Virtualization apps (OrbStack etc.) — BIOS 3401 flipped this OFF and broke them / 虚拟机应用的命根子，3401 关过它 |
+| Advanced → CPU Configuration | Hyper-Threading = Enabled | 20 threads should be 20 threads / 满血 |
+| Advanced → System Agent | Above 4G Decoding = Enabled | Navi 21 large-BAR classic requirement / 大 BAR 分配 |
+| Advanced → Onboard Devices | **Intel LAN = Enabled** | The I225-V IS the wired NIC this build drives via AppleIntelI210Ethernet — install-time AEA needs it / 有线网卡本体 |
+| Boot → Boot Option Priorities | Boot Option #1 = your ESP/OpenCore | Flashes reset boot order / 刷写必重置启动序 |
+
+**Either way / 任选（config 已中和）：** VT-d（`DisableIoMapper=true` neutralizes it）；HD Audio（AppleALC off in this build；audio via AirPods/DP）；XMP/DOCP 按原值恢复。**Not present in this BIOS / 不存在：** CFG Lock（never exposed；`AppleXcpmCfgLock=true` covers it）. **If a later BIOS adds Resizable BAR / 若后期 BIOS 有 ReBAR：** set Disabled（unverified with this build / 未验证）.
+
+Reference manuals (ASUS official, local copies in `docs/`, untracked): [User Manual E16235](https://dlcdnets.asus.com/pub/ASUS/mb/LGA1200/ROG_STRIX_Z490-F_GAMING/E16235_ROG_STRIX_Z490-F_GAMING_UM_WEB.pdf) · [BIOS Manual E16886](https://dlcdnets.asus.com/pub/ASUS/mb/LGA1200/ROG_STRIX_Z490-F_GAMING/E16886_ROG_STRIX_Z490-F_BIOS_manual_EM_WEB.pdf) / 手册本地副本在 `docs/`（未入库，版权原因只记官方直链）
 
 ## Credits / 致谢
 
